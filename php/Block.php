@@ -132,11 +132,20 @@ class Block {
 					$current = get_the_ID();
 					if ( ! in_array( $current, $exclude ) ) {
 						$posts_count++;
-						$foo_baz_posts_string .= '<li>' . get_the_title() . '</li>';
+						$foo_baz_posts_string .= '<li>' . esc_html__( get_the_title(), 'site-counts' ) . '</li>';
 					}
 				}
+				$posts_count_string = sprintf(
+					_n(
+						'%d post with the tag of foo and the category of baz',
+						'%d posts with the tag of foo and the category of baz',
+						$posts_count,
+						'site-counts'
+					),
+					$posts_count
+				);
 			?>
-				<h2><?php echo $posts_count; ?> posts with the tag of foo and the category of baz</h2>
+				<h2><?php echo $posts_count_string; ?></h2>
                 <ul><?php echo $foo_baz_posts_string; ?></ul>
             <?php endif; ?>
 		</div>
