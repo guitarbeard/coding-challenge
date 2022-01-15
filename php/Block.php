@@ -65,6 +65,7 @@ class Block {
 	public function render_callback( $attributes, $content, $block ) {
 		$post_types = get_post_types(  array( 'public' => true ) );
 		$class_name = $attributes['className'];
+		$curr_post_id = get_queried_object_id();
 		ob_start();
 
 		?>
@@ -89,39 +90,55 @@ class Block {
 					<?php endforeach; ?>
 				<ul>
 			<?php endif; ?>
-			<p><?php echo sprintf( __( 'The current post ID is %s.', 'site-counts' ), get_queried_object_id() ); ?></p>
+			<p><?php echo sprintf( __( 'The current post ID is %s.', 'site-counts' ), $curr_post_id ); ?></p>
 
 			<?php
-			$query = new WP_Query(  array(
-				'post_type' => ['post', 'page'],
+			$max_foo_baz_posts = 5;
+			$foo_baz_posts = new WP_Query( array(
+				'post_type' =>  array( 'post', 'page' ),
 				'post_status' => 'any',
+				'ignore_sticky_posts' => true,
 				'date_query' => array(
 					array(
-						'hour'      => 9,
-						'compare'   => '>=',
+						'hour' => 9,
+						'compare' => '>=',
 					),
 					array(
 						'hour' => 17,
 						'compare'=> '<=',
 					),
 				),
-                'tag'  => 'foo',
-                'category_name'  => 'baz',
-				  'post__not_in' => [ get_the_ID() ],
-			));
+                'tag' => 'foo',
+                'category_name' => 'baz',
+			  	'posts_per_page' => $max_foo_baz_posts + 1 // add 1 extra in case you are on a page being excluded
+			) );
 
-			if ( $query->found_posts ) :
-				?>
-				 <h2>5 posts with the tag of foo and the category of baz</h2>
-                <ul>
-                <?php
+			$exclude = array( $curr_post_id );
+			// if you are on a page without an ID like a posts or archives page, don't exclude the page
+			if ( $curr_post_id === 0 ) {
+				$exclude = array();
+			}
 
-                 foreach ( array_slice( $query->posts, 0, 5 ) as $post ) :
-                    ?><li><?php echo $post->post_title ?></li><?php
-				endforeach;
-			endif;
-		 	?>
-			</ul>
+			$max_found_posts = $max_foo_baz_posts;
+			if ($max_foo_baz_posts > $foo_baz_posts->found_posts) {
+				$max_found_posts = $foo_baz_posts->found_posts;
+			}
+
+			if ( $foo_baz_posts->have_posts() ) :
+				$posts_count = 0;
+				$foo_baz_posts_string = '';
+				while ( $foo_baz_posts->have_posts() && $posts_count < $max_found_posts ) {
+					$foo_baz_posts->the_post();
+					$current = get_the_ID();
+					if ( ! in_array( $current, $exclude ) ) {
+						$posts_count++;
+						$foo_baz_posts_string .= '<li>' . get_the_title() . '</li>';
+					}
+				}
+			?>
+				<h2><?php echo $posts_count; ?> posts with the tag of foo and the category of baz</h2>
+                <ul><?php echo $foo_baz_posts_string; ?></ul>
+            <?php endif; ?>
 		</div>
 		<?php
 
