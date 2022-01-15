@@ -145,9 +145,11 @@ class Block {
 					$posts_count
 				);
 			?>
-				<h2><?php echo $posts_count_string; ?></h2>
-                <ul><?php echo $foo_baz_posts_string; ?></ul>
-            <?php endif; ?>
+				<?php if ( $posts_count > 0 ) : ?>
+					<h2><?php echo $posts_count_string; ?></h2>
+					<ul><?php echo $foo_baz_posts_string; ?></ul>
+            	<?php endif; ?>
+			<?php endif; ?>
 		</div>
 		<?php
 
