@@ -63,63 +63,102 @@ class Block {
 	 * @return string The markup of the block.
 	 */
 	public function render_callback( $attributes, $content, $block ) {
-		$post_types = get_post_types(  [ 'public' => true ] );
+		$post_types_array = array( 'public' => true );
+		$post_types = get_post_types( $post_types_array );
 		$class_name = $attributes['className'];
+		$curr_post_id = get_queried_object_id();
 		ob_start();
 
 		?>
         <div class="<?php echo $class_name; ?>">
-			<h2>Post Counts</h2>
-			<ul>
-			<?php
-			foreach ( $post_types as $post_type_slug ) :
-                $post_type_object = get_post_type_object( $post_type_slug  );
-                $post_count = count(
-                    get_posts(
-						[
-							'post_type' => $post_type_slug,
-							'posts_per_page' => -1,
-						]
-					)
-                );
+			<h2><?php esc_html_e( 'Post Counts' ); ?></h2>
+			<?php if ( $post_types ): ?>
+				<ul>
+					<?php foreach ( $post_types as $post_type_slug ):
+						$post_type_object = get_post_type_object( $post_type_slug  );
+						$post_count = wp_count_posts( $post_type_slug );
+						$count_string = sprintf(
+							_n(
+								'There is %d ' . $post_type_object->labels->singular_name . '.',
+								'There are %d ' . $post_type_object->labels->name . '.',
+								$post_count->publish,
+								'site-counts'
+							),
+							$post_count->publish
+						);
+					?>
+						<li><?php echo $count_string; ?></li>
+					<?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
+			<p><?php echo sprintf( __( 'The current post ID is %s.', 'site-counts' ), $curr_post_id ); ?></p>
 
-				?>
-				<li><?php echo 'There are ' . $post_count . ' ' .
-					  $post_type_object->labels->name . '.'; ?></li>
-			<?php endforeach;	?>
-			</ul><p><?php echo 'The current post ID is ' . $_GET['post_id'] . '.'; ?></p>
-
 			<?php
-			$query = new WP_Query(  array(
-				'post_type' => ['post', 'page'],
-				'post_status' => 'any',
+			$cat_tag_post_type_array = array( 'post', 'page' );
+			$post_status = 'any';
+			$start_hour = 9;
+			$end_hour = 17;
+			$tag = 'foo';
+			$category_name = 'baz';
+			$max_cat_tag_posts = 5;
+
+			$cat_tag_posts = new WP_Query( array(
+				'post_type' => $cat_tag_post_type_array,
+				'post_status' => $post_status,
+				'ignore_sticky_posts' => true,
 				'date_query' => array(
 					array(
-						'hour'      => 9,
-						'compare'   => '>=',
+						'hour' => $start_hour,
+						'compare' => '>=',
 					),
 					array(
-						'hour' => 17,
+						'hour' => $end_hour,
 						'compare'=> '<=',
 					),
 				),
-                'tag'  => 'foo',
-                'category_name'  => 'baz',
-				  'post__not_in' => [ get_the_ID() ],
-			));
+                'tag' => $tag,
+                'category_name' => $category_name,
+			  	'posts_per_page' => $max_cat_tag_posts + 1 // add 1 extra in case you are on a page being excluded
+			) );
 
-			if ( $query->found_posts ) :
-				?>
-				 <h2>5 posts with the tag of foo and the category of baz</h2>
-                <ul>
-                <?php
+			$exclude = array( $curr_post_id );
+			// if you are on a page without an ID like a posts or archives page, don't exclude the page
+			if ( $curr_post_id === 0 ) {
+				$exclude = array();
+			}
 
-                 foreach ( array_slice( $query->posts, 0, 5 ) as $post ) :
-                    ?><li><?php echo $post->post_title ?></li><?php
-				endforeach;
-			endif;
-		 	?>
-			</ul>
+			$max_found_posts = $max_cat_tag_posts;
+			if ($max_cat_tag_posts > $cat_tag_posts->found_posts) {
+				$max_found_posts = $cat_tag_posts->found_posts;
+			}
+
+			if ( $cat_tag_posts->have_posts() ) :
+				$posts_count = 0;
+				$cat_tag_posts_string = '';
+				while ( $cat_tag_posts->have_posts() && $posts_count < $max_found_posts ) {
+					$cat_tag_posts->the_post();
+					$current = get_the_ID();
+					if ( ! in_array( $current, $exclude ) ) {
+						$posts_count++;
+						$cat_tag_posts_string .= '<li>' . esc_html__( get_the_title(), 'site-counts' ) . '</li>';
+					}
+				}
+				$posts_count_string = sprintf(
+					_n(
+						'%d post ',
+						'%d posts ',
+						$posts_count,
+						'site-counts'
+					),
+					$posts_count
+				);
+				$cat_tag_string = esc_html__( 'with the tag of ' . $tag .' and the category of ' . $category_name, 'site-counts' )
+			?>
+				<?php if ( $posts_count > 0 ) : ?>
+					<h2><?php echo $posts_count_string; ?><?php echo $cat_tag_string; ?></h2>
+					<ul><?php echo $cat_tag_posts_string; ?></ul>
+            	<?php endif; ?>
+			<?php endif; ?>
 		</div>
 		<?php
 
