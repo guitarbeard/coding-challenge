@@ -63,23 +63,33 @@ class Block {
 	 * @return string The markup of the block.
 	 */
 	public function render_callback( $attributes, $content, $block ) {
-		$post_types = get_post_types(  [ 'public' => true ] );
+		$post_types = get_post_types(  array( 'public' => true ) );
 		$class_name = $attributes['className'];
 		ob_start();
 
 		?>
         <div class="<?php echo $class_name; ?>">
-			<h2>Post Counts</h2>
-			<ul>
-			<?php
-			foreach ( $post_types as $post_type_slug ) :
-                $post_type_object = get_post_type_object( $post_type_slug  );
-				$post_count = wp_count_posts( $post_type_slug );
-				?>
-				<li><?php echo 'There are ' . $post_count->publish . ' ' .
-					  $post_type_object->labels->name . '.'; ?></li>
-			<?php endforeach;	?>
-			</ul><p><?php echo 'The current post ID is ' . $_GET['post_id'] . '.'; ?></p>
+			<h2><?php esc_html_e( 'Post Counts' ); ?></h2>
+			<?php if ( $post_types ): ?>
+				<ul>
+					<?php foreach ( $post_types as $post_type_slug ):
+						$post_type_object = get_post_type_object( $post_type_slug  );
+						$post_count = wp_count_posts( $post_type_slug );
+						$count_string = sprintf(
+							_n(
+								'There is %d ' . $post_type_object->labels->singular_name . '.',
+								'There are %d ' . $post_type_object->labels->name . '.',
+								$post_count->publish,
+								'site-counts'
+							),
+							$post_count->publish
+						);
+					?>
+						<li><?php echo $count_string; ?></li>
+					<?php endforeach; ?>
+				<ul>
+			<?php endif; ?>
+			<p><?php echo sprintf( __( 'The current post ID is %s.', 'site-counts' ), get_queried_object_id() ); ?></p>
 
 			<?php
 			$query = new WP_Query(  array(
